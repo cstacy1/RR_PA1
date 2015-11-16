@@ -1,0 +1,169 @@
+---
+title: "PA1_stacy.RMD"
+author: "C Stacy"
+date: "November 15, 2015"
+output: html_document
+---
+
+##Loading and Preprocessing the data
+```{r}
+library(data.table)
+activity <- read.csv(file="~/Downloads/activity.csv", header=TRUE)
+activity.dt <- data.table(activity)
+obs <- dim(activity.dt)[1]
+```
+
+##What is mean total number of steps taken per day?
+1. Make a histogram of the total number of steps taken each day
+```{r, echo=TRUE}
+# determine the total number of steps taken for each date
+total <- activity.dt[,lapply(.SD,sum),by="date",.SDcols=1]
+# plot the histogram of the total steps per day
+hist(total$steps, xlab="steps")
+```
+
+
+2. Calculate and report the mean and median total number of steps taken per day
+```{r, echo=TRUE}
+# determine the mean steps for each date
+mean_day <- activity.dt[,lapply(.SD, mean),by="date",.SDcols=1]
+mean_day
+# determine the median steps for each date
+activity.dt[,lapply(.SD, function(x) as.numeric(median(x))),by="date",.SDcols=1]
+```
+
+
+###What is the average daily activity pattern?
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r, echo=TRUE}
+# determine the average number of steps taken across all the days per the 5-min intervals
+daily <- activity.dt[,lapply(.SD, mean, na.rm=TRUE),by="interval",.SDcols=1]
+# plot the result in a line graph
+plot(daily,type="l")
+```
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r, echo=TRUE}
+# determine the value of max steps
+max_steps <- max(daily$steps)
+# determine the interval value of the max steps
+i <- 1
+result <- 0
+while(daily$steps[i] < max_steps){
+        i <- i+1
+        result <- daily$interval[i]
+}
+max_steps
+result
+```
+
+##Inputing missing values
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r, echo=TRUE}
+colSums(is.na(activity.dt))
+```
+
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+Plan to replace all missing values with the mean steps per day for the that day.  First replaced any NA values in the average data set with zero.
+```{r, echo=TRUE}
+# replace the NA values with 0 for the mean steps per day matrix
+mean_day[is.na(mean_day)] <- 0
+```
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r, echo=TRUE}
+newSet.dt <- data.table(activity)
+i <- 1
+j <- 1
+while(i <= obs) {
+        if(is.na(newSet.dt$steps[i])){
+                newSet.dt$steps[i] <- mean_day$steps[j]
+        }
+        if(i/288==1){
+                j <- j+1
+        }
+        i <- i+1
+}
+```
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r, echo=TRUE}
+# determine the total number of steps taken for each date
+NStotal <- newSet.dt[,lapply(.SD,sum),by="date",.SDcols=1]
+# plot the histogram of the total steps per day
+hist(NStotal$steps, xlab="steps")
+
+# determine the mean steps for each date
+newSet.dt[,lapply(.SD, mean),by="date",.SDcols=1]
+# determine the median steps for each date
+newSet.dt[,lapply(.SD, function(x) as.numeric(median(x))),by="date",.SDcols=1]
+```
+
+The histograms are different but the daily mean and median seem to be the same except where 0 has replaced NA.
+
+##Are there differences in activity patterns between weekdays and weekends?
+1. Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r, echo=TRUE}
+# create a new column
+newcolname = "week"
+    newSet.dt[,newcolname:=NA,with=FALSE]
+
+# determine day of the week
+activity$date <- as.POSIXlt(activity$date,format="%Y-%m-%d")
+allDays <- weekdays(activity$date)
+
+# based on day of the week set the new column values
+i <- 1
+while(i <= obs) {
+        if(allDays[i]==("Sunday")) {
+                newSet.dt$week[i] <- "end"
+        }
+        if(allDays[i]==("Saturday")) {
+                newSet.dt$week[i] <- "end"
+        }
+        else(newSet.dt$week[i]<- "day")
+        i <- i+1
+}
+```
+
+2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+```{r, echo=TRUE}
+# determine the average number of steps taken across all the weekdays per the 5-min intervals
+#NSend <- data.frame(steps=integer(),
+#                    date=as.Date(character()),
+#                    interval=integer(), 
+#                    week=character(),
+#                    stringsAsFactors=FALSE) 
+#NSday <- data.frame(steps=integer(),
+#                    date=as.Date(character()),
+#                    interval=integer(), 
+#                    week=character(),
+#                    stringsAsFactors=FALSE)
+#i <- 1
+#j <- 1
+#k <- 1
+
+#while(i <= obs){
+#        if(newSet.dt$week[i] == "end"){
+#                NSend[j] <- newSet.dt[i]
+#                j <- j+1
+#        }
+#        else{
+#                NSday[k] <- newSet.dt[i]
+#               k <- k+1
+#        }
+#        i <- i+1
+#}
+
+#weekday<-NSday[,lapply(.SD, mean), by="interval",.SDcols=1]
+#weekend<-NSend[,lapply(.SD, mean), by="interval",.SDcols=1]
+
+# plot the result in a line graph
+#attach(mtcars)
+#par(mfrow=c(2,1)) 
+#plot(weekday,type="l", main="Weekdays")
+#plot(weekend,type="l", main="Weekends")
+```
+
+I had a difficult time with the coding.  I think I need to review R more before trying the next assignment. :(
